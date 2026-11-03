@@ -2,10 +2,19 @@ from typing import Any, Callable
 
 import numpy as np
 from numpy import dtype, ndarray
-
+from numpy.f2py.auxfuncs import throw_error
 
 myArrX = np.array([1,2,3])
 myArrY = np.array([2,2,5])
+#TODO Make sure coordinates works as a parameter instead of the two individual arrays.
+coordinates = np.array([[1,2,3],[2,2,5]])
+
+def data_points(xycords:np.ndarray)->np.ndarray:
+    if xycords.ndim != 2:
+        raise TypeError("xy cords must be a two tuple!")
+    else:
+        return xycords
+    
 
 def meanFunc(arrX:np.ndarray,arrY:np.ndarray)-> ndarray[tuple[Any, ...], dtype[Any]]:
     if (arrX.size > 0 and arrY.size > 0):
@@ -25,17 +34,19 @@ def lineHeight(arr:np.ndarray,x:int)->int:
         line_height = (slope * (x - arr[0]) + arr[1])
     return line_height
 
-def residuals(arrY:np.ndarray,arrX:np.ndarray)->np.ndarray:
+def residuals(arr_xy)->np.ndarray:
     r1 = np.array([])
+    arr_y = arr_xy[0]
+    arr_x = arr_xy[1]
 
-    for i in range(len(arrY)):
-        res1 = arrY[i] - lineHeight(meanFunc(myArrX,myArrY),arrX[i])
+    for i in range(len(arr_y)):
+        res1 = arr_y[i] - lineHeight(meanFunc(myArrX,myArrY),arr_x[i])
         r1 = np.append(r1,res1)
 
     print(f"residuals: {r1} \n")
     return r1
 
-def srCheck(res_arr:np.ndarray)->int:
+def sr_is_zero_check(res_arr:np.ndarray)->int:
     total:int = 0
     for i in range(len(res_arr)):
         total += res_arr[i]
@@ -48,7 +59,7 @@ def srCheck(res_arr:np.ndarray)->int:
 # at this point we have the residuals check and need to get the SSR(m) and find the derivative at zero to form the regression line
 
 type callback = Callable[...,int]
-type callback2 = Callable[[np.ndarray,np.ndarray],np.ndarray]
+type callback2 = Callable[[np.ndarray],np.ndarray]
 
 def mult_dots(arr_dx:np.ndarray,arr_dy:np.ndarray)->dict:
     dx_dy = np.array([])
@@ -59,14 +70,14 @@ def mult_dots(arr_dx:np.ndarray,arr_dy:np.ndarray)->dict:
     return {'dx_dy':dx_dy,'dx_squared':dx_squared}
 
 
-def ssrm_derivative(sr_check:callback,res_func:callback2)->int|None:
+def ssrm_derivative(is_zero_check:callback,res_func:callback2)->int|None:
     x = 0
     y = 1
     dx = np.array([])
     dy = np.array([])
     minima = 0
-
-    if sr_check(res_func(myArrY,myArrX)) == 0:
+    #TODO fix res func, takes one param. must split into two arrays
+    if is_zero_check(res_func(data_points(coordinates))) == 0:
         mean = meanFunc(myArrX,myArrY)
 
         for i in range(len(myArrX)):
@@ -89,4 +100,4 @@ def ssrm_derivative(sr_check:callback,res_func:callback2)->int|None:
         print("failed to find derivative\n")
 
 
-print(ssrm_derivative(srCheck,residuals))
+print(ssrm_derivative(sr_is_zero_check,residuals))
