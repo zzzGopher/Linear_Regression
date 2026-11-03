@@ -1,12 +1,11 @@
 from typing import Any, Callable
 
 import numpy as np
+from fontTools.diff import color
 from numpy import dtype, ndarray
-from numpy.f2py.auxfuncs import throw_error
+import matplotlib.pyplot as plt
 
-myArrX = np.array([1,2,3])
-myArrY = np.array([2,2,5])
-#TODO Make sure coordinates works as a parameter instead of the two individual arrays.
+
 coordinates = np.array([[1,2,3],[2,2,5]])
 
 def data_points(xycords:np.ndarray)->np.ndarray:
@@ -16,12 +15,14 @@ def data_points(xycords:np.ndarray)->np.ndarray:
         return xycords
     
 
-def meanFunc(arrX:np.ndarray,arrY:np.ndarray)-> ndarray[tuple[Any, ...], dtype[Any]]:
-    if (arrX.size > 0 and arrY.size > 0):
-        meanX = arrX.mean()
-        meanY = arrY.mean()
+def meanFunc(xy_coords)-> np.ndarray:
+    arr_x = xy_coords[0]
+    arr_y = xy_coords[1]
+    if (arr_x.size > 0 and arr_y.size > 0):
+        mean_x = arr_x.mean()
+        mean_y = arr_y.mean()
 
-        meanArr:np.ndarray = np.array([meanX,meanY])
+        meanArr:np.ndarray = np.array([mean_x,mean_y])
 
         return meanArr
     else:
@@ -30,17 +31,17 @@ def meanFunc(arrX:np.ndarray,arrY:np.ndarray)-> ndarray[tuple[Any, ...], dtype[A
 def lineHeight(arr:np.ndarray,x:int)->int:
     line_height = 0
     if arr.size > 0:
-        slope = (arr[0]/arr[1])
+        slope = (arr[1]/arr[0])
         line_height = (slope * (x - arr[0]) + arr[1])
     return line_height
 
 def residuals(arr_xy)->np.ndarray:
     r1 = np.array([])
-    arr_y = arr_xy[0]
-    arr_x = arr_xy[1]
+    arr_x = arr_xy[0]
+    arr_y = arr_xy[1]
 
     for i in range(len(arr_y)):
-        res1 = arr_y[i] - lineHeight(meanFunc(myArrX,myArrY),arr_x[i])
+        res1 = arr_y[i] - lineHeight(meanFunc(coordinates),arr_x[i])
         r1 = np.append(r1,res1)
 
     print(f"residuals: {r1} \n")
@@ -58,7 +59,7 @@ def sr_is_zero_check(res_arr:np.ndarray)->int:
 
 # at this point we have the residuals check and need to get the SSR(m) and find the derivative at zero to form the regression line
 
-type callback = Callable[...,int]
+type callback = Callable[...,np.ndarray]
 type callback2 = Callable[[np.ndarray],np.ndarray]
 
 def mult_dots(arr_dx:np.ndarray,arr_dy:np.ndarray)->dict:
@@ -76,15 +77,17 @@ def ssrm_derivative(is_zero_check:callback,res_func:callback2)->int|None:
     dx = np.array([])
     dy = np.array([])
     minima = 0
-    #TODO fix res func, takes one param. must split into two arrays
+
     if is_zero_check(res_func(data_points(coordinates))) == 0:
-        mean = meanFunc(myArrX,myArrY)
+        x_coords = coordinates[0]
+        y_coords = coordinates[1]
+        mean = meanFunc(coordinates)
 
-        for i in range(len(myArrX)):
-            dx = np.append(dx,(myArrX[i] - mean[x]))
-            dy = np.append(dy,(myArrY[i] - mean[y]))
+        for i in range(len(x_coords)):
+            dx = np.append(dx,(x_coords[i] - mean[x]))
+            dy = np.append(dy,(y_coords[i] - mean[y]))
 
-#TODO fix hardcoded array length check
+
     if len(dx) == 3 and len(dy) == 3:
         products = mult_dots(dx,dy)
         delta_y = np.sum(products['dx_dy'])
@@ -99,5 +102,13 @@ def ssrm_derivative(is_zero_check:callback,res_func:callback2)->int|None:
     else:
         print("failed to find derivative\n")
 
+regression_slope = ssrm_derivative(sr_is_zero_check,residuals)
 
-print(ssrm_derivative(sr_is_zero_check,residuals))
+#TODO fix param types check that regression line is dynamic
+def data_plot(xy_coords:np.ndarray,regression_slope:int,mean:callback):
+    mean = meanFunc(xy_coords)
+    plt.scatter(xy_coords[0],xy_coords[1])
+    plt.axline((mean[0],mean[1]),slope=regression_slope,color="green")
+    plt.show()
+
+data_plot(coordinates,regression_slope,meanFunc(coordinates))
