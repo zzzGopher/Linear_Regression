@@ -44,7 +44,6 @@ def residuals(arr_xy)->np.ndarray:
         res1 = arr_y[i] - lineHeight(meanFunc(coordinates),arr_x[i])
         r1 = np.append(r1,res1)
 
-    print(f"residuals: {r1} \n")
     return r1
 
 def sr_is_zero_check(res_arr:np.ndarray)->int:
@@ -52,7 +51,7 @@ def sr_is_zero_check(res_arr:np.ndarray)->int:
     for i in range(len(res_arr)):
         total += res_arr[i]
 
-    if total == 0:
+    if np.isclose(total,0):
         return total
     else:
         raise ValueError("sum of residuals not equal to zero. wrong line of best fit.")
@@ -78,7 +77,7 @@ def ssrm_derivative(is_zero_check:callback,res_func:callback2)->int|None:
     dy = np.array([])
     minima = 0
 
-    if is_zero_check(res_func(data_points(coordinates))) == 0:
+    if np.isclose(is_zero_check(res_func(data_points(coordinates))), 0):
         x_coords = coordinates[0]
         y_coords = coordinates[1]
         mean = meanFunc(coordinates)
@@ -88,7 +87,7 @@ def ssrm_derivative(is_zero_check:callback,res_func:callback2)->int|None:
             dy = np.append(dy,(y_coords[i] - mean[y]))
 
 
-    if len(dx) == 3 and len(dy) == 3:
+    if dx.any() and dy.any() :
         products = mult_dots(dx,dy)
         delta_y = np.sum(products['dx_dy'])
         delta_x = np.sum(products['dx_squared'])
@@ -102,13 +101,69 @@ def ssrm_derivative(is_zero_check:callback,res_func:callback2)->int|None:
     else:
         print("failed to find derivative\n")
 
-regression_slope = ssrm_derivative(sr_is_zero_check,residuals)
 
-#TODO fix param types check that regression line is dynamic
 def data_plot(xy_coords:np.ndarray,regression_slope:int,mean:callback):
     mean = meanFunc(xy_coords)
     plt.scatter(xy_coords[0],xy_coords[1])
     plt.axline((mean[0],mean[1]),slope=regression_slope,color="green")
     plt.show()
+    return regression_slope
 
-data_plot(coordinates,regression_slope,meanFunc(coordinates))
+
+regression_slope = ssrm_derivative(sr_is_zero_check,residuals)
+
+def sum_squared_res(res):
+    sum = 0
+    for i in range(len(res)):
+        sum += i
+    if sum > 0:
+        return sum
+
+def R2():
+    reg_slope = data_plot(coordinates, regression_slope, meanFunc(coordinates))
+
+    regression_margin = np.array([])
+
+    y_coords = coordinates[1]
+    x_coords = coordinates[0]
+    predicted_y = np.array([])
+
+    mean_coords = meanFunc(coordinates)
+    mean_coordx = mean_coords[0]
+    mean_coordy = mean_coords[1]
+
+    ssr_mean = np.array([])
+
+
+    for i in range(len(x_coords)):
+        y = (reg_slope * (x_coords[i] - mean_coordx)) + mean_coordy
+        predicted_y = np.append(predicted_y,y)
+
+
+    for i in range(len(coordinates[0])):
+        margin1 = predicted_y[i] - y_coords[i]
+        regression_margin = np.append(regression_margin,margin1)
+
+    for i in range(len(y_coords)):
+        res = y_coords[i] - mean_coordy
+        ssr_mean = np.append(ssr_mean,res)
+
+
+    ssr_regression = np.sum(np.square(regression_margin))
+
+    ssr_mean = np.sum(np.square(ssr_mean))
+
+    print(ssr_regression,ssr_mean)
+
+    r2 = 1 - (ssr_regression/ssr_mean)
+
+    print(f"the r^2 weight is : {r2}")
+
+
+R2()
+
+#TODO clean up and refactor to better design with clearer function names
+
+
+#TODO convert into console application (optional)
+
